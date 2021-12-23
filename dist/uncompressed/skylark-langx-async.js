@@ -86,11 +86,17 @@
 
 })(function(define,require) {
 
+define('skylark-langx-async/async',[
+    "skylark-langx-ns"
+],function(skylark){
+	return skylark.attach("langx.async");	
+});
 define('skylark-langx-async/deferred',[
     "skylark-langx-arrays",
 	"skylark-langx-funcs",
-    "skylark-langx-objects"
-],function(arrays,funcs,objects){
+    "skylark-langx-objects",
+    "./async"
+],function(arrays,funcs,objects,async){
     "use strict";
 
     var slice = Array.prototype.slice,
@@ -369,69 +375,112 @@ define('skylark-langx-async/deferred',[
         return d.promise;
     };
 
-    return Deferred;
+    return async.Deferred = Deferred;
 });
-define('skylark-langx-async/async',[
-    "skylark-langx-ns",
+define('skylark-langx-async/each',[
+	"./async"
+],function(async){
+
+	function each(items, next, callback) {
+		if (items.length === 0) return callback(undefined, items);
+
+		var transformed = new Array(items.length);
+		var count = 0;
+		var returned = false;
+
+		items.forEach(function(item, index) {
+			next(item, function(error, transformedItem) {
+		    	if (returned) return;
+		    	if (error) {
+		      		returned = true;
+		      		return callback(error);
+		    	}
+		    	transformed[index] = transformedItem;
+		    	count += 1;
+		    	if (count === items.length) {
+		    		return callback(undefined, transformed);
+		    	}
+			});
+		});
+	}
+
+	return async.each = each;
+
+});
+define('skylark-langx-async/parallel',[
     "skylark-langx-objects",
+    "./async",
     "./deferred"
-],function(skylark,objects,Deferred){
-    var each = objects.each;
-    
-    var async = {
-        Deferred : Deferred,
+],function(objects,async,Deferred){
+    function parallel(arr,args,ctx) {
+        var rets = [];
+        ctx = ctx || null;
+        args = args || [];
 
-        parallel : function(arr,args,ctx) {
-            var rets = [];
-            ctx = ctx || null;
-            args = args || [];
+        objects.each(arr,function(i,func){
+            rets.push(func.apply(ctx,args));
+        });
 
-            each(arr,function(i,func){
-                rets.push(func.apply(ctx,args));
+        return Deferred.all(rets);
+    }
+
+	return async.parallel = parallel;
+});
+define('skylark-langx-async/series',[
+    "skylark-langx-objects",
+    "./async",
+    "./deferred"
+],function(objects,async,Deferred){
+     function series(arr,args,ctx) {
+        var rets = [],
+            d = new Deferred(),
+            p = d.promise;
+
+        ctx = ctx || null;
+        args = args || [];
+
+        d.resolve();
+        objects.each(arr,function(i,func){
+            p = p.then(function(){
+                return func.apply(ctx,args);
             });
+            rets.push(p);
+        });
 
-            return Deferred.all(rets);
-        },
+        return Deferred.all(rets);
+    }
 
-        series : function(arr,args,ctx) {
-            var rets = [],
-                d = new Deferred(),
-                p = d.promise;
+	return async.series = series;
+});
+define('skylark-langx-async/waterful',[
+    "skylark-langx-objects",
+    "./async",
+    "./deferred"
+],function(objects,async,Deferred){
+    function waterful(arr,args,ctx) {
+        var d = new Deferred(),
+            p = d.promise;
 
-            ctx = ctx || null;
-            args = args || [];
+        ctx = ctx || null;
+        args = args || [];
 
-            d.resolve();
-            each(arr,function(i,func){
-                p = p.then(function(){
-                    return func.apply(ctx,args);
-                });
-                rets.push(p);
-            });
+        d.resolveWith(ctx,args);
 
-            return Deferred.all(rets);
-        },
+        objects.each(arr,function(i,func){
+            p = p.then(func);
+        });
+        return p;
+    }
 
-        waterful : function(arr,args,ctx) {
-            var d = new Deferred(),
-                p = d.promise;
-
-            ctx = ctx || null;
-            args = args || [];
-
-            d.resolveWith(ctx,args);
-
-            each(arr,function(i,func){
-                p = p.then(func);
-            });
-            return p;
-        }
-    };
-
-	return skylark.attach("langx.async",async);	
+	return async.waterful = waterful;
 });
 define('skylark-langx-async/main',[
-	"./async"
+	"./async",
+	"./deferred",
+	"./each",
+	"./parallel",
+	"./series",
+	"./waterful"
 ],function(async){
 	return async;
 });

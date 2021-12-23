@@ -1,8 +1,9 @@
 define([
     "skylark-langx-arrays",
 	"skylark-langx-funcs",
-    "skylark-langx-objects"
-],function(arrays,funcs,objects){
+    "skylark-langx-objects",
+    "./async"
+],function(arrays,funcs,objects,async){
     "use strict";
 
     var slice = Array.prototype.slice,
@@ -281,5 +282,5 @@ define([
         return d.promise;
     };
 
-    return Deferred;
+    return async.Deferred = Deferred;
 });
