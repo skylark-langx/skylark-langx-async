@@ -21,7 +21,8 @@
   "license": "MIT",
   "bugs": "https://github.com/skylarklangx/skylark-langx/issues",
   "exports": {
-    "./": "./dist/uncompressed/skylark-langx-async/"
+    ".": "./dist/uncompressed/skylark-langx-async/main.js",
+    "./*": "./dist/uncompressed/skylark-langx-async/*.js"
   },
   "dependencies": {
     "skylark-langx-arrays": "git+https://github.com/skylark-langx/skylark-langx-arrays.git",
